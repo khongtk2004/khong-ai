@@ -1,0 +1,140 @@
+1 update system
+
+sudo dnf update -y
+
+2 install web server local with nginx
+
+sudo dnf install nginx -y
+
+sudo systemctl start nginx
+
+sudo systemctl enable nginx
+
+sudo firewall-cmd --permanent --add-service=http
+
+sudo firewall-cmd --reload
+
+3 install ollama 
+
+sudo dnf install zstd -y
+
+curl -fsSL https://ollama.com/install.sh | sh
+
+sudo systemctl start ollama
+
+sudo systemctl enable ollama
+
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+
+sudo tee /etc/systemd/system/ollama.service.d/override.conf << EOF
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0:11434"
+EOF
+
+sudo systemctl daemon-reload
+
+sudo systemctl restart ollama
+
+sudo firewall-cmd --zone=public --add-port=11434/tcp --permanent
+
+sudo firewall-cmd --reload
+
+4 install docker 
+
+sudo dnf install -y dnf-utils
+
+sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+sudo dnf install -y docker-ce docker-ce-cli containerd.io
+
+sudo systemctl start docker
+
+sudo systemctl enable docker
+
+sudo usermod -aG docker $USER
+
+sudo firewall-cmd --permanent --add-port=5000/tcp
+
+sudo firewall-cmd --reload
+
+5 install git
+
+sudo dnf install -y git
+
+6 flow set up khong ai
+
+6.1 go to root for host website
+
+cd /home/khong/
+
+mkdir web1
+
+cd web1
+
+6.2 clone project from githup
+
+follow this
+
+[khong@localhost web1]$ git clone https://github.com/khongtk2004/khong-ai
+Cloning into 'khong-ai'...
+remote: Enumerating objects: 12, done.
+remote: Counting objects: 100% (12/12), done.
+remote: Compressing objects: 100% (9/9), done.
+remote: Total 12 (delta 2), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (12/12), 18.72 KiB | 2.67 MiB/s, done.
+Resolving deltas: 100% (2/2), done.
+[khong@localhost web1]$ ls
+khong-ai
+[khong@localhost web1]$ mv khong-ai/* ./
+[khong@localhost web1]$ ls
+app.py  Dockerfile  index.html  khong-ai  README.md  requirements.txt
+[khong@localhost web1]$ rm -rf khong-ai/
+
+6.3 setup permission
+
+chmod 755 /home/khong
+
+chmod -R 755 /home/khong/web1
+
+sudo chcon -R -t httpd_sys_content_t /home/khong/web1
+
+sudo nginx -s reload
+
+6.4 pull ing from docker 
+
+newgrp docker
+
+docker pull python:3.9-slim
+docker pull node:16-slim
+docker pull openjdk:11-slim
+docker pull gcc:latest
+docker pull mcr.microsoft.com/dotnet/sdk:6.0
+docker pull golang:1.19-alpine
+docker pull rust:1.70-slim
+docker pull ruby:3.2-slim
+docker pull php:8.2-cli
+docker pull perl:5.36-slim
+docker pull alpine:latest
+docker pull nginx:alpine
+
+6.5 download model ollama for demo
+
+ollama list 
+
+if not see 
+
+ollama pull qwen2.5-coder:1.5b
+
+6.3 run backend 
+
+python3 -m venv venv
+
+source venv/bin/activate
+
+pip install flask flask-cors docker
+
+python app.py
+
+7 or one more you can run it on live server and run backend on your vm
+
+

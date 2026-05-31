@@ -986,7 +986,7 @@
         <div class="settings-panel">
             <div class="settings-row">
                 <span>🔗 Rocky VM API:</span>
-                <input type="text" id="rockyApiUrl" class="settings-input" value="http://127.0.0.1:5000" placeholder="http://YOUR_VM_IP:5000">
+                <input type="text" id="rockyApiUrl" class="settings-input" value="http://192.168.122.144:5000" placeholder="http://YOUR_VM_IP:5000">
                 <button class="settings-button" onclick="testRockyConnection()">Test Connection</button>
                 <button class="settings-button secondary" onclick="pullDockerImages()">📦 Pull Images</button>
             </div>
@@ -1005,13 +1005,6 @@
                 <div class="message-content">
                     🚀 <strong>Multi-Language Code Runner</strong> connected to Rocky VM!<br><br>
                     📚 <strong>Supported languages:</strong> Python, JavaScript, Java, C++, C, C#, Go, Rust, Ruby, PHP, Bash, HTML, CSS<br><br>
-                    💻 <strong>How to use:</strong><br>
-                    • Ask the AI to write code in any language<br>
-                    • Code blocks will appear with a <span style="color:#19c37d;">Run on Rocky VM</span> button<br>
-                    • Click Run to execute in isolated Docker containers<br>
-                    • Output appears below the code block<br><br>
-                    🔧 <strong>Quick examples:</strong> Click on any language badge above<br>
-                    🤖 <strong>Default model:</strong> khong:latest
                 </div>
             </div>
         </div>
@@ -1056,8 +1049,8 @@
         // (The OllamaChat class with all methods)
         class OllamaChat {
             constructor() {
-                this.ollamaUrl = 'http://127.0.0.1:11434';
-                this.rockyApiUrl = 'http://127.0.0.1:5000';
+                this.ollamaUrl = 'http://192.168.122.144:11434';
+                this.rockyApiUrl = 'http://192.168.122.144:5000';
                 this.modelName = 'khong:latest';
                 this.isProcessing = false;
                 this.abortController = null;

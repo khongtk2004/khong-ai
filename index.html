@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Language Code Runner with Rocky VM</title>
+    <title>Multi-Language Code Runner with Ai</title>
     <style>
         * {
             margin: 0;
@@ -986,7 +986,7 @@
         <div class="settings-panel">
             <div class="settings-row">
                 <span>🔗 Rocky VM API:</span>
-                <input type="text" id="rockyApiUrl" class="settings-input" value="http://192.168.49.150:5000" placeholder="http://YOUR_VM_IP:5000">
+                <input type="text" id="rockyApiUrl" class="settings-input" value="http://127.0.0.1:5000" placeholder="http://YOUR_VM_IP:5000">
                 <button class="settings-button" onclick="testRockyConnection()">Test Connection</button>
                 <button class="settings-button secondary" onclick="pullDockerImages()">📦 Pull Images</button>
             </div>
@@ -1056,8 +1056,8 @@
         // (The OllamaChat class with all methods)
         class OllamaChat {
             constructor() {
-                this.ollamaUrl = 'http://192.168.49.150:11434';
-                this.rockyApiUrl = 'http://192.168.49.150:5000';
+                this.ollamaUrl = 'http://127.0.0.1:11434';
+                this.rockyApiUrl = 'http://127.0.0.1:5000';
                 this.modelName = 'khong:latest';
                 this.isProcessing = false;
                 this.abortController = null;

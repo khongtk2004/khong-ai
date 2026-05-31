@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Language Code Runner with Rocky VM</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #343541;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background-color: #202123;
+            color: #fff;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #343541;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .new-chat-btn:hover {
+            background-color: #40414f;
+        }
+
+        .new-chat-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: #fff;
+        }
+
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .history-item {
+            padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #ececf1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background-color 0.2s;
+        }
+
+        .history-item:hover {
+            background-color: #2a2b32;
+        }
+
+        .history-item svg {
+            width: 16px;
+            height: 16px;
+            fill: #8e8ea0;
+        }
+
+        .history-item span {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ececf1;
+            font-size: 14px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background-color: #19c37d;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #343541;
+        }
+
+        /* Model Selector */
+        .model-selector {
+            padding: 16px 20px;
+            background-color: #343541;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .model-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .model-dropdown {
+            background-color: #40414f;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .model-dropdown option {
+            background-color: #40414f;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #f44336;
+        }
+
+        .status-dot.connected {
+            background-color: #4caf50;
+        }
+
+        .status-text {
+            color: #ececf1;
+        }
+
+        .rocky-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background-color: #2a2b32;
+            margin-left: 10px;
+        }
+
+        .rocky-status.ready {
+            color: #4caf50;
+            border: 1px solid #4caf50;
+        }
+
+        .rocky-status.loading {
+            color: #ffa500;
+            border: 1px solid #ffa500;
+        }
+
+        .rocky-status.error {
+            color: #f44336;
+            border: 1px solid #f44336;
+        }
+
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 0;
+        }
+
+        .message {
+            padding: 20px 40px;
+            display: flex;
+            gap: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .user-message {
+            background-color: #343541;
+        }
+
+        .assistant-message {
+            background-color: #444654;
+        }
+
+        .system-message {
+            background-color: #2a2b32;
+        }
+
+        .thinking-message {
+            background-color: #444654;
+            opacity: 0.8;
+        }
+
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .user-avatar-small {
+            background-color: #19c37d;
+            color: #fff;
+        }
+
+        .assistant-avatar {
+            background-color: #19c37d;
+            color: #fff;
+        }
+
+        .message-content {
+            flex: 1;
+            color: #ececf1;
+            font-size: 15px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            background-color: #2a2b32;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 40px;
+            border: 1px solid #40414f;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ececf1;
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+
+        .settings-input {
+            background-color: #40414f;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 13px;
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .settings-input:focus {
+            border-color: #19c37d;
+            outline: none;
+        }
+
+        .settings-button {
+            background-color: #19c37d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .settings-button:hover {
+            background-color: #15a567;
+        }
+
+        .settings-button.secondary {
+            background-color: #40414f;
+        }
+
+        .settings-button.secondary:hover {
+            background-color: #565869;
+        }
+
+        .stats {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #8e8ea0;
+        }
+
+        /* Language Selector */
+        .language-selector {
+            display: flex;
+            gap: 10px;
+            margin: 10px 40px;
+            flex-wrap: wrap;
+            padding: 10px;
+            background-color: #2a2b32;
+            border-radius: 30px;
+            border: 1px solid #40414f;
+        }
+        
+        .language-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .language-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .language-badge.selected {
+            border-color: #19c37d;
+            box-shadow: 0 0 15px rgba(25, 195, 125, 0.4);
+        }
+        
+        /* Language colors */
+        .lang-python { background-color: #3776AB; color: white; }
+        .lang-javascript { background-color: #F7DF1E; color: black; }
+        .lang-java { background-color: #007396; color: white; }
+        .lang-cpp { background-color: #00599C; color: white; }
+        .lang-c { background-color: #A8B9CC; color: black; }
+        .lang-csharp { background-color: #239120; color: white; }
+        .lang-go { background-color: #00ADD8; color: white; }
+        .lang-rust { background-color: #000000; color: white; }
+        .lang-ruby { background-color: #CC342D; color: white; }
+        .lang-php { background-color: #777BB3; color: white; }
+        .lang-bash { background-color: #4EAA25; color: white; }
+        .lang-html { background-color: #E34F26; color: white; }
+        .lang-css { background-color: #1572B6; color: white; }
+        .lang-sql { background-color: #4479A1; color: white; }
+        .lang-swift { background-color: #FA7343; color: white; }
+        .lang-kotlin { background-color: #7F52FF; color: white; }
+        .lang-r { background-color: #276DC3; color: white; }
+        .lang-perl { background-color: #39457E; color: white; }
+        .lang-typescript { background-color: #3178C6; color: white; }
+        .lang-scala { background-color: #DC322F; color: white; }
+
+        /* Code Block Styles */
+        .code-block-wrapper {
+            margin: 20px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #3e3f4e;
+            background-color: #1e1f2b;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            background-color: #2a2c3a;
+            border-bottom: 1px solid #3e3f4e;
+            color: #fff;
+            font-size: 12px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            letter-spacing: 0.3px;
+        }
+
+        .code-language {
+            color: #19c37d;
+            text-transform: uppercase;
+            font-weight: 700;
+            font-size: 11px;
+            background: #1e1f2b;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid #19c37d40;
+        }
+
+        .code-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .code-btn {
+            background: none;
+            border: none;
+            color: #b0b3c3;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+            background-color: #333544;
+        }
+
+        .code-btn:hover:not(:disabled) {
+            background-color: #19c37d;
+            color: #fff;
+            transform: scale(1.02);
+        }
+
+        .code-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .code-btn svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+        }
+
+        .code-content {
+            padding: 20px;
+            margin: 0;
+            background-color: #0f0f17;
+            color: #e4e4f0;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        /* Run button special */
+        .run-btn {
+            background-color: #19c37d;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+        }
+
+        .run-btn:hover:not(:disabled) {
+            background-color: #15a86d;
+        }
+
+        .run-btn svg {
+            fill: white;
+        }
+
+        .run-output {
+            margin-top: 0px;
+            padding: 18px;
+            background-color: #0b0b12;
+            border-top: 2px solid #19c37d40;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            color: #cbd5e0;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        .run-output.error {
+            color: #ff7b7b;
+            background-color: #2a1a1a;
+            border-top-color: #f44366;
+        }
+
+        .run-output.success {
+            color: #a3e0b0;
+        }
+
+        .run-output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 11px;
+            color: #a0a8c0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .clear-output {
+            cursor: pointer;
+            color: #19c37d;
+            text-decoration: none;
+            font-size: 11px;
+            background: #2d2f3a;
+            padding: 4px 10px;
+            border-radius: 30px;
+            transition: all 0.2s;
+        }
+
+        .clear-output:hover {
+            background: #19c37d;
+            color: white;
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #ffa500;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Inline code */
+        .inline-code {
+            background-color: #2d2f3a;
+            color: #e6e6fa;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9em;
+            border: 1px solid #4b4e66;
+        }
+
+        /* Input Area */
+        .input-container {
+            padding: 20px 40px;
+            background: linear-gradient(to bottom, transparent, #343541 20%);
+            position: sticky;
+            bottom: 0;
+        }
+
+        .input-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+            width: 100%;
+            background-color: #40414f;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #19c37d;
+            box-shadow: 0 4px 25px rgba(25, 195, 125, 0.2);
+        }
+
+        .input-wrapper textarea {
+            width: 100%;
+            padding: 18px 60px 18px 22px;
+            background-color: transparent;
+            border: none;
+            color: #fff;
+            font-size: 15px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .input-wrapper textarea::placeholder {
+            color: #8e8ea0;
+            font-style: italic;
+        }
+
+        .send-button {
+            position: absolute;
+            right: 16px;
+            bottom: 14px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .send-button:hover:not(:disabled) {
+            background-color: #565869;
+            transform: scale(1.05);
+        }
+
+        .send-button svg {
+            width: 22px;
+            height: 22px;
+            fill: #8e8ea0;
+        }
+
+        .send-button:not(:disabled) svg {
+            fill: #19c37d;
+        }
+
+        .send-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        /* Fast thinking animation */
+        .fast-thinking {
+            display: flex;
+            gap: 5px;
+            padding: 8px 0;
+        }
+
+        .fast-thinking span {
+            width: 8px;
+            height: 8px;
+            background-color: #19c37d;
+            border-radius: 50%;
+            animation: fastPulse 1.2s infinite;
+        }
+
+        .fast-thinking span:nth-child(2) { animation-delay: 0.2s; }
+        .fast-thinking span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes fastPulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.4); opacity: 1; }
+        }
+
+        .error-message {
+            color: #f44336;
+            text-align: center;
+            padding: 10px;
+            font-size: 14px;
+            margin-top: 10px;
+            background-color: #2a1a1a;
+            border-radius: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .stop-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 10px;
+            display: none;
+            transition: all 0.2s;
+        }
+
+        .stop-button:hover {
+            background-color: #d32f2f;
+            transform: scale(1.02);
+        }
+
+        .stop-button.visible {
+            display: inline-block;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #565869;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6e7085;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; }
+            .message { padding: 20px; }
+            .input-container { padding: 20px; }
+            .settings-panel { margin: 10px 20px; }
+            .language-selector { margin: 10px 20px; }
+        }
+
+        /* Copy notification */
+        .copy-notification {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background-color: #19c37d;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Example buttons */
+        .example-button {
+            background-color: #40414f;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 11px;
+            cursor: pointer;
+            margin: 3px;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .example-button:hover {
+            background-color: #565869;
+            border-color: #19c37d;
+        }
+
+        /* File attachment styles */
+        .attachment-bar {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .attach-button {
+            background: none;
+            border: none;
+            color: #8e8ea0;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+            background-color: #333544;
+        }
+
+        .attach-button:hover {
+            background-color: #19c37d;
+            color: #fff;
+        }
+
+        .attach-button svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .file-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .file-tag {
+            background-color: #2a2b32;
+            border-radius: 30px;
+            padding: 5px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #fff;
+            border: 1px solid #19c37d50;
+        }
+
+        .file-tag button {
+            background: none;
+            border: none;
+            color: #8e8ea0;
+            cursor: pointer;
+            padding: 0 4px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .file-tag button:hover {
+            color: #f44336;
+        }
+
+        /* Preview styles */
+        .fast-preview {
+            margin: 15px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .image-fast-preview {
+            max-width: 100%;
+            max-height: 200px;
+            display: block;
+            margin: 0 auto;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .image-fast-preview:hover {
+            transform: scale(1.02);
+        }
+
+        .txt-fast-preview {
+            background-color: #1e1f2b;
+            padding: 15px;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            max-height: 180px;
+            overflow-y: auto;
+            color: #e2e2f0;
+        }
+
+        .preview-header {
+            padding: 8px 15px;
+            background-color: #2a2c3a;
+            font-size: 12px;
+            color: #19c37d;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.95);
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: 300;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: #19c37d;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <button class="new-chat-btn" onclick="resetChat()">
+                <svg viewBox="0 0 24 24">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                New chat
+            </button>
+        </div>
+        <div class="chat-history" id="chatHistory">
+            <!-- History items would be dynamically added here -->
+        </div>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">L</div>
+                <span>Local User</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Model Selector -->
+        <div class="model-selector">
+            <div class="model-info">
+                <span class="model-name" style="color:#ececf1; font-weight:500;">Model:</span>
+                <select id="modelSelect" class="model-dropdown">
+                    <option value="khong:latest" selected>khong:latest</option>
+                </select>
+                
+                <span id="rockyStatus" class="rocky-status loading">
+                    <span class="loading-spinner"></span>
+                    Connecting to Rocky VM...
+                </span>
+                
+                <button id="stopButton" class="stop-button">⏹ Stop</button>
+            </div>
+            <div class="status-badge">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-text" id="statusText">Checking...</span>
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div class="settings-panel">
+            <div class="settings-row">
+                <span>🔗 Rocky VM API:</span>
+                <input type="text" id="rockyApiUrl" class="settings-input" value="http://192.168.49.150:5000" placeholder="http://YOUR_VM_IP:5000">
+                <button class="settings-button" onclick="testRockyConnection()">Test Connection</button>
+                <button class="settings-button secondary" onclick="pullDockerImages()">📦 Pull Images</button>
+            </div>
+            <div class="stats" id="languageStats"></div>
+        </div>
+
+        <!-- Language Quick Selector -->
+        <div class="language-selector" id="languageSelector">
+            <!-- Will be populated dynamically -->
+        </div>
+
+        <!-- Chat Messages -->
+        <div id="chatMessages" class="chat-messages">
+            <div class="message assistant-message">
+                <div class="avatar assistant-avatar">AI</div>
+                <div class="message-content">
+                    🚀 <strong>Multi-Language Code Runner</strong> connected to Rocky VM!<br><br>
+                    📚 <strong>Supported languages:</strong> Python, JavaScript, Java, C++, C, C#, Go, Rust, Ruby, PHP, Bash, HTML, CSS<br><br>
+                    💻 <strong>How to use:</strong><br>
+                    • Ask the AI to write code in any language<br>
+                    • Code blocks will appear with a <span style="color:#19c37d;">Run on Rocky VM</span> button<br>
+                    • Click Run to execute in isolated Docker containers<br>
+                    • Output appears below the code block<br><br>
+                    🔧 <strong>Quick examples:</strong> Click on any language badge above<br>
+                    🤖 <strong>Default model:</strong> khong:latest
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-container">
+            <div class="input-wrapper">
+                <div class="attachment-bar">
+                    <button class="attach-button" onclick="document.getElementById('fileInput').click()">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+                        </svg>
+                        Attach
+                    </button>
+                    <div id="fileTags" class="file-tags"></div>
+                </div>
+                <textarea 
+                    id="userInput" 
+                    placeholder="Ask for code... (e.g., 'Write a C++ calculator with classes')"
+                    rows="1"
+                    oninput="autoResize(this)"
+                ></textarea>
+                <button class="send-button" id="sendButton" disabled>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M2 20l20-8L2 4v6l14 2-14 2v6z"/>
+                    </svg>
+                </button>
+            </div>
+            <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(this.files)" accept=".txt,image/*">
+            <div id="errorMessage" class="error-message"></div>
+        </div>
+    </div>
+
+    <!-- Modal for image preview -->
+    <div id="imageModal" class="modal" onclick="closeModal()">
+        <span class="modal-close">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+    <script>
+        // Full JavaScript code from previous response goes here
+        // (The OllamaChat class with all methods)
+        class OllamaChat {
+            constructor() {
+                this.ollamaUrl = 'http://192.168.49.150:11434';
+                this.rockyApiUrl = 'http://192.168.49.150:5000';
+                this.modelName = 'khong:latest';
+                this.isProcessing = false;
+                this.abortController = null;
+                this.rockyConnected = false;
+                this.supportedLanguages = [];
+                this.attachedFiles = [];
+                
+                this.chatMessages = document.getElementById('chatMessages');
+                this.userInput = document.getElementById('userInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.stopButton = document.getElementById('stopButton');
+                this.modelSelect = document.getElementById('modelSelect');
+                this.statusDot = document.getElementById('statusDot');
+                this.statusText = document.getElementById('statusText');
+                this.errorMessage = document.getElementById('errorMessage');
+                this.rockyStatus = document.getElementById('rockyStatus');
+                this.rockyApiInput = document.getElementById('rockyApiUrl');
+                this.languageSelector = document.getElementById('languageSelector');
+                this.languageStats = document.getElementById('languageStats');
+                this.fileTags = document.getElementById('fileTags');
+                this.modalImage = document.getElementById('modalImage');
+                this.imageModal = document.getElementById('imageModal');
+                
+                this.init();
+            }
+            
+            async init() {
+                this.bindEvents();
+                await this.checkConnection();
+                await this.loadModels();
+                await this.testRockyConnection();
+            }
+            
+            bindEvents() {
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+                this.stopButton.addEventListener('click', () => this.stopGeneration());
+                this.userInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+                this.modelSelect.addEventListener('change', (e) => {
+                    this.modelName = e.target.value;
+                });
+            }
+            
+            async checkConnection() {
+                try {
+                    const response = await fetch(`${this.ollamaUrl}/api/tags`);
+                    if (response.ok) {
+                        this.statusDot.className = 'status-dot connected';
+                        this.statusText.textContent = 'Connected';
+                        this.sendButton.disabled = false;
+                        return true;
+                    }
+                } catch (error) {
+                    this.statusDot.className = 'status-dot';
+                    this.statusText.textContent = 'Offline';
+                    this.sendButton.disabled = true;
+                }
+                return false;
+            }
+            
+            async loadModels() {
+                try {
+                    const response = await fetch(`${this.ollamaUrl}/api/tags`);
+                    const data = await response.json();
+                    
+                    this.modelSelect.innerHTML = '';
+                    
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = 'khong:latest';
+                    defaultOption.textContent = 'khong:latest';
+                    defaultOption.selected = true;
+                    this.modelSelect.appendChild(defaultOption);
+                    
+                    if (data.models?.length > 0) {
+                        const otherModels = data.models.filter(model => model.name !== 'khong:latest');
+                        
+                        otherModels.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.name;
+                            option.textContent = model.name;
+                            this.modelSelect.appendChild(option);
+                        });
+                    }
+                    
+                    this.modelName = 'khong:latest';
+                    
+                } catch (error) {
+                    console.error('Failed to load models:', error);
+                    this.modelSelect.innerHTML = '<option value="khong:latest" selected>khong:latest</option>';
+                    this.modelName = 'khong:latest';
+                }
+            }
+            
+            async testRockyConnection() {
+                const url = this.rockyApiInput.value.trim();
+                if (!url) return;
+                
+                this.rockyApiUrl = url;
+                this.rockyStatus.innerHTML = '<span class="loading-spinner"></span> Connecting to Rocky VM...';
+                this.rockyStatus.className = 'rocky-status loading';
+                
+                try {
+                    const response = await fetch(`${url}/health`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.rockyConnected = true;
+                        this.rockyStatus.innerHTML = '✅ Connected to Rocky VM';
+                        this.rockyStatus.className = 'rocky-status ready';
+                        
+                        if (data.supported_languages) {
+                            this.supportedLanguages = data.supported_languages;
+                            this.updateLanguageSelector();
+                            this.updateStats(`📊 ${this.supportedLanguages.length} languages supported`);
+                        }
+                        
+                        this.showNotification('Connected to Rocky VM successfully!');
+                    } else {
+                        throw new Error('Health check failed');
+                    }
+                } catch (error) {
+                    console.error('Rocky VM connection failed:', error);
+                    this.rockyConnected = false;
+                    this.rockyStatus.innerHTML = '❌ Rocky VM offline';
+                    this.rockyStatus.className = 'rocky-status error';
+                    this.updateStats('⚠️ Connection failed');
+                    this.showError('Cannot connect to Rocky VM. Make sure the backend is running.');
+                }
+            }
+            
+            async pullDockerImages() {
+                if (!this.rockyConnected) {
+                    this.showError('Rocky VM not connected');
+                    return;
+                }
+                
+                this.rockyStatus.innerHTML = '<span class="loading-spinner"></span> Pulling Docker images (this may take a while)...';
+                this.rockyStatus.className = 'rocky-status loading';
+                
+                try {
+                    const response = await fetch(`${this.rockyApiUrl}/pull-images`, {
+                        method: 'POST'
+                    });
+                    const result = await response.json();
+                    
+                    let success = 0;
+                    let failed = 0;
+                    
+                    Object.entries(result).forEach(([lang, status]) => {
+                        if (status === 'success') success++;
+                        else failed++;
+                    });
+                    
+                    this.rockyStatus.innerHTML = `✅ Images pulled: ${success} success, ${failed} failed`;
+                    this.rockyStatus.className = 'rocky-status ready';
+                    
+                    setTimeout(() => {
+                        this.rockyStatus.innerHTML = '✅ Connected to Rocky VM';
+                    }, 3000);
+                    
+                } catch (error) {
+                    this.rockyStatus.innerHTML = '❌ Failed to pull images';
+                    this.rockyStatus.className = 'rocky-status error';
+                }
+            }
+            
+            updateLanguageSelector() {
+                this.languageSelector.innerHTML = '';
+                
+                const languages = [
+                    { name: 'Python', lang: 'python' },
+                    { name: 'JavaScript', lang: 'javascript' },
+                    { name: 'Java', lang: 'java' },
+                    { name: 'C++', lang: 'cpp' },
+                    { name: 'C', lang: 'c' },
+                    { name: 'C#', lang: 'csharp' },
+                    { name: 'Go', lang: 'go' },
+                    { name: 'Rust', lang: 'rust' },
+                    { name: 'Ruby', lang: 'ruby' },
+                    { name: 'PHP', lang: 'php' },
+                    { name: 'Bash', lang: 'bash' },
+                    { name: 'HTML', lang: 'html' },
+                    { name: 'CSS', lang: 'css' }
+                ];
+                
+                languages.forEach(({ name, lang }) => {
+                    if (this.supportedLanguages.includes(lang)) {
+                        const badge = document.createElement('span');
+                        badge.className = `language-badge lang-${lang}`;
+                        badge.textContent = name;
+                        badge.onclick = () => this.insertLanguageExample(lang);
+                        this.languageSelector.appendChild(badge);
+                    }
+                });
+            }
+            
+            updateStats(text) {
+                this.languageStats.textContent = text;
+            }
+            
+            insertLanguageExample(language) {
+                const examples = {
+                    python: 'Write a Python function that calculates the Fibonacci sequence using recursion',
+                    javascript: 'Write a JavaScript function to sort an array of objects by a property',
+                    java: 'Write a Java program that implements a simple banking system with classes',
+                    cpp: 'Write a C++ program that demonstrates inheritance and polymorphism',
+                    c: 'Write a C program that implements a linked list',
+                    csharp: 'Write a C# program that uses LINQ to filter a list',
+                    go: 'Write a Go program that demonstrates goroutines and channels',
+                    rust: 'Write a Rust function that returns the nth Fibonacci number with pattern matching',
+                    ruby: 'Write a Ruby script that reads a CSV file and processes the data',
+                    php: 'Write a PHP function that connects to MySQL and fetches data',
+                    bash: 'Write a bash script that monitors system resources and logs them',
+                    html: 'Create an HTML page with a responsive navigation bar and cards',
+                    css: 'Write CSS for a modern dark theme with animations'
+                };
+                
+                this.userInput.value = examples[language] || `Write a ${language} example with best practices`;
+                this.userInput.focus();
+                autoResize(this.userInput);
+            }
+            
+            // File handling methods
+            async handleFileSelect(files) {
+                for (let file of files) {
+                    if (file.size > 5 * 1024 * 1024) {
+                        this.showError(`${file.name} too large (max 5MB)`);
+                        continue;
+                    }
+                    
+                    try {
+                        let content = '';
+                        let previewUrl = null;
+                        
+                        if (file.type.startsWith('image/')) {
+                            previewUrl = URL.createObjectURL(file);
+                            content = '[IMAGE]';
+                        } else if (file.name.endsWith('.txt')) {
+                            content = await this.readTextFile(file);
+                            if (content.length > 2000) {
+                                content = content.substring(0, 2000) + '\n...[truncated]';
+                            }
+                        }
+                        
+                        this.attachedFiles.push({
+                            name: file.name,
+                            content: content,
+                            previewUrl: previewUrl,
+                            isImage: !!previewUrl,
+                            isTxt: file.name.endsWith('.txt')
+                        });
+                        
+                        this.addFileTag(file.name);
+                    } catch (error) {
+                        this.showError(`Error reading ${file.name}`);
+                    }
+                }
+            }
+            
+            async readTextFile(file) {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsText(file);
+                });
+            }
+            
+            addFileTag(fileName) {
+                const tag = document.createElement('div');
+                tag.className = 'file-tag';
+                tag.innerHTML = `
+                    <span>${fileName}</span>
+                    <button onclick="window.chat.removeFile('${fileName}')">×</button>
+                `;
+                this.fileTags.appendChild(tag);
+            }
+            
+            removeFile(fileName) {
+                const file = this.attachedFiles.find(f => f.name === fileName);
+                if (file?.previewUrl) URL.revokeObjectURL(file.previewUrl);
+                this.attachedFiles = this.attachedFiles.filter(f => f.name !== fileName);
+                this.fileTags.innerHTML = '';
+                this.attachedFiles.forEach(f => this.addFileTag(f.name));
+            }
+            
+            openImage(url) {
+                this.modalImage.src = url;
+                this.imageModal.style.display = 'block';
+            }
+            
+            closeModal() {
+                this.imageModal.style.display = 'none';
+            }
+            
+            // Format message with code blocks
+            formatMessageWithCode(text) {
+                const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+                const inlineCodeRegex = /`([^`]+)`/g;
+                
+                let parts = [];
+                let lastIndex = 0;
+                let match;
+                
+                while ((match = codeBlockRegex.exec(text)) !== null) {
+                    if (match.index > lastIndex) {
+                        parts.push({
+                            type: 'text',
+                            content: text.substring(lastIndex, match.index)
+                        });
+                    }
+                    
+                    parts.push({
+                        type: 'code',
+                        language: match[1] || 'text',
+                        content: match[2].trim()
+                    });
+                    
+                    lastIndex = match.index + match[0].length;
+                }
+                
+                if (lastIndex < text.length) {
+                    let remainingText = text.substring(lastIndex);
+                    
+                    const inlineParts = [];
+                    let inlineLastIndex = 0;
+                    let inlineMatch;
+                    
+                    while ((inlineMatch = inlineCodeRegex.exec(remainingText)) !== null) {
+                        if (inlineMatch.index > inlineLastIndex) {
+                            inlineParts.push({
+                                type: 'text',
+                                content: remainingText.substring(inlineLastIndex, inlineMatch.index)
+                            });
+                        }
+                        
+                        inlineParts.push({
+                            type: 'inline-code',
+                            content: inlineMatch[1]
+                        });
+                        
+                        inlineLastIndex = inlineMatch.index + inlineMatch[0].length;
+                    }
+                    
+                    if (inlineLastIndex < remainingText.length) {
+                        inlineParts.push({
+                            type: 'text',
+                            content: remainingText.substring(inlineLastIndex)
+                        });
+                    }
+                    
+                    parts.push(...inlineParts);
+                }
+                
+                return parts;
+            }
+            
+            // Create code block HTML
+            createCodeBlock(code, language) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'code-block-wrapper';
+                
+                const header = document.createElement('div');
+                header.className = 'code-header';
+                
+                const langSpan = document.createElement('span');
+                langSpan.className = 'code-language';
+                langSpan.textContent = language || 'text';
+                
+                const actions = document.createElement('div');
+                actions.className = 'code-actions';
+                
+                // Run button for all languages
+                const runBtn = document.createElement('button');
+                runBtn.className = 'code-btn run-btn';
+                runBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="12" height="12">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Run on Rocky VM
+                `;
+                runBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.runCodeOnRocky(code, language, wrapper);
+                };
+                
+                if (!this.rockyConnected) {
+                    runBtn.disabled = true;
+                    runBtn.title = 'Rocky VM not connected';
+                }
+                
+                actions.appendChild(runBtn);
+                
+                // Copy button
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'code-btn';
+                copyBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="12" height="12">
+                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                    Copy
+                `;
+                
+                copyBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.copyToClipboard(code, copyBtn);
+                };
+                
+                // Download button
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'code-btn';
+                downloadBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="12" height="12">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    Download
+                `;
+                
+                downloadBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.downloadFile(code, this.getFileName(language));
+                };
+                
+                actions.appendChild(copyBtn);
+                actions.appendChild(downloadBtn);
+                
+                header.appendChild(langSpan);
+                header.appendChild(actions);
+                
+                const content = document.createElement('pre');
+                content.className = 'code-content';
+                content.textContent = code;
+                
+                wrapper.appendChild(header);
+                wrapper.appendChild(content);
+                
+                return wrapper;
+            }
+            
+            getFileName(language) {
+                const extensions = {
+                    'python': 'code.py',
+                    'javascript': 'code.js',
+                    'js': 'code.js',
+                    'java': 'Code.java',
+                    'cpp': 'code.cpp',
+                    'c': 'code.c',
+                    'csharp': 'code.cs',
+                    'go': 'code.go',
+                    'rust': 'code.rs',
+                    'ruby': 'code.rb',
+                    'php': 'code.php',
+                    'perl': 'code.pl',
+                    'bash': 'code.sh',
+                    'html': 'index.html',
+                    'css': 'style.css'
+                };
+                return extensions[language.toLowerCase()] || 'code.txt';
+            }
+            
+            // Run code on Rocky VM
+            async runCodeOnRocky(code, language, wrapper) {
+                if (!this.rockyConnected) {
+                    this.showError('Rocky VM is not connected. Please check the connection.');
+                    return;
+                }
+                
+                const existingOutput = wrapper.querySelector('.run-output');
+                if (existingOutput) {
+                    existingOutput.remove();
+                }
+                
+                const outputDiv = document.createElement('div');
+                outputDiv.className = 'run-output';
+                
+                const outputHeader = document.createElement('div');
+                outputHeader.className = 'run-output-header';
+                outputHeader.innerHTML = `
+                    <span><span class="loading-spinner"></span> Running ${language} on Rocky VM...</span>
+                    <span class="clear-output">Clear</span>
+                `;
+                
+                const outputContent = document.createElement('div');
+                outputContent.className = 'output-content';
+                
+                outputDiv.appendChild(outputHeader);
+                outputDiv.appendChild(outputContent);
+                
+                wrapper.appendChild(outputDiv);
+                
+                try {
+                    const response = await fetch(`${this.rockyApiUrl}/run-code`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            code: code,
+                            language: language
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    outputHeader.innerHTML = `
+                        <span>📤 Output:</span>
+                        <span class="clear-output">Clear</span>
+                    `;
+                    
+                    if (result.error) {
+                        outputContent.innerHTML = `<span style="color: #ff7b7b;">${this.escapeHtml(result.output)}</span>`;
+                        outputDiv.classList.add('error');
+                    } else {
+                        if (result.type === 'html') {
+                            const iframe = document.createElement('iframe');
+                            iframe.style.width = '100%';
+                            iframe.style.height = '200px';
+                            iframe.style.border = 'none';
+                            iframe.style.backgroundColor = 'white';
+                            iframe.style.borderRadius = '6px';
+                            iframe.srcdoc = result.output;
+                            outputContent.innerHTML = '';
+                            outputContent.appendChild(iframe);
+                        } else {
+                            outputContent.innerHTML = `<span style="color: #a3e0b0;">${this.escapeHtml(result.output)}</span>`;
+                        }
+                        outputDiv.classList.add('success');
+                    }
+                    
+                    outputHeader.querySelector('.clear-output').onclick = () => {
+                        outputDiv.remove();
+                    };
+                    
+                } catch (error) {
+                    outputHeader.innerHTML = `<span>❌ Error</span><span class="clear-output">Clear</span>`;
+                    outputContent.innerHTML = `<span style="color: #ff7b7b;">Error: ${this.escapeHtml(error.message)}</span>`;
+                    outputDiv.classList.add('error');
+                    
+                    outputHeader.querySelector('.clear-output').onclick = () => {
+                        outputDiv.remove();
+                    };
+                }
+            }
+            
+            async copyToClipboard(text, button) {
+                const originalHTML = button.innerHTML;
+                
+                try {
+                    await navigator.clipboard.writeText(text);
+                    button.innerHTML = '✓ Copied!';
+                    button.style.backgroundColor = '#4caf50';
+                    button.style.color = 'white';
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalHTML;
+                        button.style.backgroundColor = '';
+                        button.style.color = '';
+                    }, 2000);
+                    
+                    this.showNotification('📋 Code copied to clipboard!');
+                    
+                } catch (err) {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    
+                    button.innerHTML = '✓ Copied!';
+                    button.style.backgroundColor = '#4caf50';
+                    button.style.color = 'white';
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalHTML;
+                        button.style.backgroundColor = '';
+                        button.style.color = '';
+                    }, 2000);
+                    
+                    this.showNotification('📋 Code copied to clipboard!');
+                }
+            }
+            
+            downloadFile(content, filename) {
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showNotification(`📥 Downloaded as ${filename}`);
+            }
+            
+            showNotification(message) {
+                const notification = document.createElement('div');
+                notification.className = 'copy-notification';
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 2500);
+            }
+            
+            escapeHtml(text) {
+                if (!text) return '';
+                return String(text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+            
+            addMessage(content, role, files = null) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${role}-message`;
+                
+                const avatar = document.createElement('div');
+                avatar.className = `avatar ${role === 'user' ? 'user-avatar-small' : 'assistant-avatar'}`;
+                avatar.textContent = role === 'user' ? 'You' : 'AI';
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                
+                if (role === 'assistant') {
+                    const parts = this.formatMessageWithCode(content);
+                    
+                    parts.forEach(part => {
+                        if (part.type === 'text') {
+                            const textNode = document.createTextNode(part.content);
+                            contentDiv.appendChild(textNode);
+                        } else if (part.type === 'code') {
+                            const codeBlock = this.createCodeBlock(part.content, part.language);
+                            contentDiv.appendChild(codeBlock);
+                        } else if (part.type === 'inline-code') {
+                            const inlineSpan = document.createElement('span');
+                            inlineSpan.className = 'inline-code';
+                            inlineSpan.textContent = part.content;
+                            contentDiv.appendChild(inlineSpan);
+                        }
+                    });
+                } else {
+                    contentDiv.textContent = content;
+                }
+                
+                if (files && files.length > 0) {
+                    files.forEach(file => {
+                        if (file.isImage && file.previewUrl) {
+                            const img = document.createElement('img');
+                            img.src = file.previewUrl;
+                            img.className = 'image-fast-preview';
+                            img.onclick = () => this.openImage(file.previewUrl);
+                            
+                            const previewDiv = document.createElement('div');
+                            previewDiv.className = 'fast-preview';
+                            previewDiv.innerHTML = `
+                                <div class="preview-header">
+                                    <span>🖼️ ${file.name}</span>
+                                </div>
+                            `;
+                            previewDiv.appendChild(img);
+                            contentDiv.appendChild(previewDiv);
+                        } else if (file.isTxt && file.content) {
+                            const previewDiv = document.createElement('div');
+                            previewDiv.className = 'fast-preview';
+                            previewDiv.innerHTML = `
+                                <div class="preview-header">
+                                    <span>📄 ${file.name}</span>
+                                </div>
+                                <div class="txt-fast-preview">${this.escapeHtml(file.content)}</div>
+                            `;
+                            contentDiv.appendChild(previewDiv);
+                        }
+                    });
+                }
+                
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(contentDiv);
+                this.chatMessages.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+            
+            showThinking() {
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.className = 'message thinking-message';
+                thinkingDiv.id = 'thinkingIndicator';
+                
+                thinkingDiv.innerHTML = `
+                    <div class="avatar assistant-avatar">AI</div>
+                    <div class="message-content">
+                        <div class="fast-thinking">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <div style="font-size:12px; color:#8e8ea0; margin-top:5px;">Generating code...</div>
+                    </div>
+                `;
+                
+                this.chatMessages.appendChild(thinkingDiv);
+                this.scrollToBottom();
+            }
+            
+            removeThinking() {
+                const thinking = document.getElementById('thinkingIndicator');
+                if (thinking) thinking.remove();
+            }
+            
+            scrollToBottom() {
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
+            
+            stopGeneration() {
+                if (this.abortController) {
+                    this.abortController.abort();
+                    this.abortController = null;
+                    this.stopButton.classList.remove('visible');
+                    this.removeThinking();
+                    this.isProcessing = false;
+                    this.userInput.disabled = false;
+                    this.sendButton.disabled = false;
+                }
+            }
+            
+            showError(msg) {
+                this.errorMessage.textContent = msg;
+                setTimeout(() => { this.errorMessage.textContent = ''; }, 4000);
+            }
+            
+            async sendMessage() {
+                const message = this.userInput.value.trim();
+                if ((!message && this.attachedFiles.length === 0) || this.isProcessing || !this.modelName) return;
+                
+                const currentFiles = [...this.attachedFiles];
+                const userMessage = message || "Check this file";
+                
+                this.userInput.value = '';
+                this.userInput.style.height = 'auto';
+                
+                this.addMessage(userMessage, 'user', currentFiles);
+                
+                this.attachedFiles.forEach(f => {
+                    if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+                });
+                this.attachedFiles = [];
+                this.fileTags.innerHTML = '';
+                
+                this.isProcessing = true;
+                this.userInput.disabled = true;
+                this.sendButton.disabled = true;
+                this.stopButton.classList.add('visible');
+                
+                this.showThinking();
+                
+                this.abortController = new AbortController();
+                
+                try {
+                    let prompt = message;
+                    const txtFiles = currentFiles.filter(f => f.isTxt);
+                    
+                    if (txtFiles.length > 0) {
+                        prompt += "\n\nFiles:\n";
+                        txtFiles.forEach(f => {
+                            prompt += `--- ${f.name} ---\n${f.content}\n`;
+                        });
+                    }
+                    
+                    if (message.toLowerCase().includes('code') || 
+                        message.toLowerCase().includes('write') || 
+                        message.toLowerCase().includes('function') ||
+                        message.toLowerCase().includes('program') ||
+                        message.toLowerCase().includes('script')) {
+                        prompt += "\n\nPlease format any code with proper ```language``` blocks. Supported languages: python, javascript, java, cpp, c, csharp, go, rust, ruby, php, bash, html, css. Include runnable examples with proper syntax.";
+                    }
+                    
+                    if (currentFiles.some(f => f.isImage)) {
+                        setTimeout(() => {
+                            this.removeThinking();
+                            this.addMessage("I see you uploaded an image! I can display it but can't analyze image content. Please describe what you see or upload a .txt file.", 'assistant');
+                        }, 500);
+                        
+                        this.isProcessing = false;
+                        this.userInput.disabled = false;
+                        this.sendButton.disabled = false;
+                        this.stopButton.classList.remove('visible');
+                        this.abortController = null;
+                        this.userInput.focus();
+                        return;
+                    }
+                    
+                    setTimeout(() => this.removeThinking(), 50);
+                    
+                    const response = await fetch(`${this.ollamaUrl}/api/generate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        signal: this.abortController.signal,
+                        body: JSON.stringify({
+                            model: this.modelName,
+                            prompt: prompt,
+                            stream: true,
+                            options: {
+                                temperature: 0.5,
+                                num_predict: 2000,
+                                top_k: 20
+                            }
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error('API error');
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullResponse = '';
+                    
+                    const streamingDiv = document.createElement('div');
+                    streamingDiv.className = 'message assistant-message';
+                    streamingDiv.id = 'streamingMessage';
+                    streamingDiv.innerHTML = `
+                        <div class="avatar assistant-avatar">AI</div>
+                        <div class="message-content"></div>
+                    `;
+                    this.chatMessages.appendChild(streamingDiv);
+                    const contentDiv = streamingDiv.querySelector('.message-content');
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+                        
+                        for (const line of lines) {
+                            if (!line.trim()) continue;
+                            try {
+                                const data = JSON.parse(line);
+                                if (data.response) {
+                                    fullResponse += data.response;
+                                    contentDiv.textContent = fullResponse;
+                                    this.scrollToBottom();
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                    
+                    streamingDiv.remove();
+                    this.addMessage(fullResponse, 'assistant');
+                    
+                    this.stopGeneration();
+                    
+                } catch (error) {
+                    this.removeThinking();
+                    if (error.name !== 'AbortError') {
+                        this.addMessage(`Error: ${error.message}`, 'system');
+                    }
+                } finally {
+                    this.isProcessing = false;
+                    this.userInput.disabled = false;
+                    this.sendButton.disabled = false;
+                    this.stopButton.classList.remove('visible');
+                    this.abortController = null;
+                    this.userInput.focus();
+                }
+            }
+        }
+
+        // Global helper functions
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        }
+
+        function handleFileSelect(files) {
+            if (window.chat) {
+                window.chat.handleFileSelect(files);
+            }
+        }
+
+        function resetChat() {
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="message assistant-message">
+                    <div class="avatar assistant-avatar">AI</div>
+                    <div class="message-content">
+                        🚀 <strong>Multi-Language Code Runner</strong> connected to Rocky VM!<br><br>
+                        📚 <strong>Supported languages:</strong> Python, JavaScript, Java, C++, C, C#, Go, Rust, Ruby, PHP, Bash, HTML, CSS<br><br>
+                        💻 <strong>How to use:</strong><br>
+                        • Ask the AI to write code in any language<br>
+                        • Code blocks will appear with a <span style="color:#19c37d;">Run on Rocky VM</span> button<br>
+                        • Click Run to execute in isolated Docker containers<br>
+                        • Output appears below the code block<br><br>
+                        🔧 <strong>Quick examples:</strong> Click on any language badge above<br>
+                        🤖 <strong>Default model:</strong> khong:latest
+                    </div>
+                </div>
+            `;
+            if (window.chat) {
+                if (window.chat.attachedFiles) {
+                    window.chat.attachedFiles.forEach(f => {
+                        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+                    });
+                }
+                window.chat.attachedFiles = [];
+                window.chat.fileTags.innerHTML = '';
+                if (window.chat.abortController) window.chat.abortController.abort();
+            }
+        }
+
+        async function testRockyConnection() {
+            if (window.chat) {
+                await window.chat.testRockyConnection();
+            }
+        }
+
+        async function pullDockerImages() {
+            if (window.chat) {
+                await window.chat.pullDockerImages();
+            }
+        }
+
+        function closeModal() {
+            if (window.chat) window.chat.closeModal();
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            window.chat = new OllamaChat();
+            window.handleFileSelect = handleFileSelect;
+            window.resetChat = resetChat;
+            window.testRockyConnection = testRockyConnection;
+            window.pullDockerImages = pullDockerImages;
+            window.closeModal = closeModal;
+            window.autoResize = autoResize;
+        });
+    </script>
+</body>
+</html>
